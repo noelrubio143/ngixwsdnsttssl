@@ -10,8 +10,8 @@ fi
 echo "Installing FirewallFalcon Manager..."
 
 # URLs (IPv4 forced to avoid GitHub IPv6 issues)
-MENU_URL="https://raw.githubusercontent.com/firewallfalcons/FirewallFalcon-Manager/main/menu.sh"
-SSHD_URL="https://raw.githubusercontent.com/firewallfalcons/FirewallFalcon-Manager/main/ssh"
+MENU_URL="https://raw.githubusercontent.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/menu.sh"
+SSHD_URL="https://raw.githubusercontent.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/ssh"
 
 # Install menu
 wget -4 -q -O /usr/local/bin/menu "$MENU_URL"
