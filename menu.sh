@@ -88,7 +88,7 @@ check_environment() {
 }
 
 initial_setup() {
-    echo -e "${C_BLUE}⚙️ Initializing FirewallFalcon Manager setup...${C_RESET}"
+    echo -e "${C_BLUE}⚙️ Initializing AMBERVPN Manager setup...${C_RESET}"
     check_environment
     
     mkdir -p "$DB_DIR"
@@ -120,7 +120,7 @@ _is_valid_ipv4() {
     fi
 }
 
-check_and_open_firewall_port() {
+check_and_open_AMBERVPN_port() {
     local port="$1"
     local protocol="${2:-tcp}"
     local firewall_detected=false
@@ -128,7 +128,7 @@ check_and_open_firewall_port() {
     if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
         firewall_detected=true
         if ! ufw status | grep -qw "$port/$protocol"; then
-            echo -e "${C_YELLOW}🔥 UFW firewall is active and port ${port}/${protocol} is closed.${C_RESET}"
+            echo -e "${C_YELLOW}🔥 AMBERVPN is active and port ${port}/${protocol} is closed.${C_RESET}"
             read -p "👉 Do you want to open this port now? (y/n): " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 ufw allow "$port/$protocol"
@@ -161,7 +161,7 @@ check_and_open_firewall_port() {
     fi
 
     if ! $firewall_detected; then
-        echo -e "${C_BLUE}ℹ️ No active firewall (UFW or firewalld) detected. Assuming ports are open.${C_RESET}"
+        echo -e "${C_BLUE}ℹ️ No active AMBERVPN (UFW or firewalld) detected. Assuming ports are open.${C_RESET}"
     fi
     return 0
 }
@@ -361,7 +361,7 @@ EOF
 
     cat > "$LIMITER_SERVICE" << EOF
 [Unit]
-Description=FirewallFalcon Active User Limiter
+Description=AMBERVPN Active User Limiter
 After=network.target
 
 [Service]
