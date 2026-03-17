@@ -2541,7 +2541,7 @@ show_banner() {
     
     clear
     echo
-    echo -e "${C_TITLE}   FirewallFalcon Manager ${C_RESET}${C_DIM}| v4.0.0 Premium Edition${C_RESET}"
+    echo -e "${C_TITLE}   AMBERVPN Manager ${C_RESET}${C_DIM}| v4.0.0 Premium Edition${C_RESET}"
     echo -e "${C_BLUE}   ─────────────────────────────────────────────────────────${C_RESET}"
     printf "   ${C_GRAY}%-10s${C_RESET} %-20s ${C_GRAY}|${C_RESET} %s\n" "OS" "$os_name" "Uptime: $up_time"
     printf "   ${C_GRAY}%-10s${C_RESET} %-20s ${C_GRAY}|${C_RESET} %s\n" "Memory" "${ram_usage}% Used" "Online Sessions: ${C_WHITE}${online_users}${C_RESET}"
