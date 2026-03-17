@@ -26,7 +26,7 @@ C_STATUS_A=$C_GREEN
 C_STATUS_I=$C_GRAY
 C_ACCENT=$C_ORANGE
 
-DB_DIR="/etc/firewallfalcon"
+DB_DIR="/etc/AMBERVPN"
 DB_FILE="$DB_DIR/users.db"
 INSTALL_FLAG_FILE="$DB_DIR/.install"
 BADVPN_SERVICE_FILE="/etc/systemd/system/badvpn.service"
@@ -34,25 +34,25 @@ BADVPN_BUILD_DIR="/root/badvpn-build"
 HAPROXY_CONFIG="/etc/haproxy/haproxy.cfg"
 NGINX_CONFIG_FILE="/etc/nginx/sites-available/default"
 SSL_CERT_DIR="/etc/firewallfalcon/ssl"
-SSL_CERT_FILE="$SSL_CERT_DIR/firewallfalcon.pem"
+SSL_CERT_FILE="$SSL_CERT_DIR/AMABERVPN.pem"
 NGINX_PORTS_FILE="$DB_DIR/nginx_ports.conf"
 DNSTT_SERVICE_FILE="/etc/systemd/system/dnstt.service"
 DNSTT_BINARY="/usr/local/bin/dnstt-server"
-DNSTT_KEYS_DIR="/etc/firewallfalcon/dnstt"
+DNSTT_KEYS_DIR="/etc/AMBERVPN/dnstt"
 DNSTT_CONFIG_FILE="$DB_DIR/dnstt_info.conf"
 DNS_INFO_FILE="$DB_DIR/dns_info.conf"
 UDP_CUSTOM_DIR="/root/udp"
 UDP_CUSTOM_SERVICE_FILE="/etc/systemd/system/udp-custom.service"
 SSH_BANNER_FILE="/etc/bannerssh"
-FALCONPROXY_SERVICE_FILE="/etc/systemd/system/falconproxy.service"
-FALCONPROXY_BINARY="/usr/local/bin/falconproxy"
-FALCONPROXY_CONFIG_FILE="$DB_DIR/falconproxy_config.conf"
-LIMITER_SCRIPT="/usr/local/bin/firewallfalcon-limiter.sh"
-LIMITER_SERVICE="/etc/systemd/system/firewallfalcon-limiter.service"
+AMBERVPNPROXY_SERVICE_FILE="/etc/systemd/system/AMBERVPNPROXY.service"
+AMBERVPNPROXY_BINARY="/usr/local/bin/falconproxy"
+AMBERVPNPROXY_CONFIG_FILE="$DB_DIR/ambervpnproxy_config.conf"
+LIMITER_SCRIPT="/usr/local/bin/ambervpn-limiter.sh"
+LIMITER_SERVICE="/etc/systemd/system/amabervpn-limiter.service"
 BANDWIDTH_DIR="$DB_DIR/bandwidth"
-BANDWIDTH_SCRIPT="/usr/local/bin/firewallfalcon-bandwidth.sh"
-BANDWIDTH_SERVICE="/etc/systemd/system/firewallfalcon-bandwidth.service"
-TRIAL_CLEANUP_SCRIPT="/usr/local/bin/firewallfalcon-trial-cleanup.sh"
+BANDWIDTH_SCRIPT="/usr/local/bin/ambervpn-bandwidth.sh"
+BANDWIDTH_SERVICE="/etc/systemd/system/ambervpn-bandwidth.service"
+TRIAL_CLEANUP_SCRIPT="/usr/local/bin/ambervpn-trial-cleanup.sh"
 
 # --- ZiVPN Variables ---
 ZIVPN_DIR="/etc/zivpn"
@@ -142,10 +142,10 @@ check_and_open_AMBERVPN_port() {
         fi
     fi
 
-    if command -v firewall-cmd &> /dev/null && systemctl is-active --quiet firewalld; then
+    if command -v ambervpn-cmd &> /dev/null && systemctl is-active --quiet firewalld; then
         firewall_detected=true
-        if ! firewall-cmd --list-ports --permanent | grep -qw "$port/$protocol"; then
-            echo -e "${C_YELLOW}🔥 firewalld is active and port ${port}/${protocol} is not open.${C_RESET}"
+        if ! ambervpn-cmd --list-ports --permanent | grep -qw "$port/$protocol"; then
+            echo -e "${C_YELLOW}🔥 ambervpn is active and port ${port}/${protocol} is not open.${C_RESET}"
             read -p "👉 Do you want to open this port now? (y/n): " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 firewall-cmd --add-port="$port/$protocol" --permanent
@@ -160,7 +160,7 @@ check_and_open_AMBERVPN_port() {
         fi
     fi
 
-    if ! $firewall_detected; then
+    if ! $ambervpn_detected; then
         echo -e "${C_BLUE}ℹ️ No active AMBERVPN (UFW or firewalld) detected. Assuming ports are open.${C_RESET}"
     fi
     return 0
@@ -207,8 +207,8 @@ setup_limiter_service() {
     # Combined limiter + bandwidth monitoring
     cat > "$LIMITER_SCRIPT" << 'EOF'
 #!/bin/bash
-DB_FILE="/etc/firewallfalcon/users.db"
-BW_DIR="/etc/firewallfalcon/bandwidth"
+DB_FILE="/etc/ambervpn/users.db"
+BW_DIR="/etc/ambervpn/bandwidth"
 PID_DIR="$BW_DIR/pidtrack"
 
 mkdir -p "$BW_DIR" "$PID_DIR"
@@ -374,9 +374,9 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-    pkill -f "firewallfalcon-limiter" 2>/dev/null
+    pkill -f "ambervpn-limiter" 2>/dev/null
 
-    if ! systemctl is-active --quiet firewallfalcon-limiter; then
+    if ! systemctl is-active --quiet ambervpn-limiter; then
         systemctl daemon-reload
         systemctl enable firewallfalcon-limiter &>/dev/null
         systemctl start firewallfalcon-limiter --no-block &>/dev/null
@@ -401,10 +401,10 @@ setup_bandwidth_service() {
 setup_trial_cleanup_script() {
     cat > "$TRIAL_CLEANUP_SCRIPT" << 'TREOF'
 #!/bin/bash
-# FirewallFalcon Trial Account Auto-Cleanup
-# Usage: firewallfalcon-trial-cleanup.sh <username>
-DB_FILE="/etc/firewallfalcon/users.db"
-BW_DIR="/etc/firewallfalcon/bandwidth"
+# Ambervpn Trial Account Auto-Cleanup
+# Usage: Ambervpn-trial-cleanup.sh <username>
+DB_FILE="/etc/ambervpn/users.db"
+BW_DIR="/etc/ambervpn/bandwidth"
 
 username="$1"
 if [[ -z "$username" ]]; then exit 1; fi
@@ -1011,20 +1011,20 @@ restore_user_data() {
     echo -e "${C_BLUE}⚙️ Overwriting current user database...${C_RESET}"
     mkdir -p "$DB_DIR"
     cp "$restored_db_file" "$DB_FILE"
-    if [ -d "$temp_dir/firewallfalcon/ssl" ]; then
-        cp -r "$temp_dir/firewallfalcon/ssl" "$DB_DIR/"
+    if [ -d "$temp_dir/ambervpn/ssl" ]; then
+        cp -r "$temp_dir/ambervpn/ssl" "$DB_DIR/"
     fi
-    if [ -d "$temp_dir/firewallfalcon/dnstt" ]; then
-        cp -r "$temp_dir/firewallfalcon/dnstt" "$DB_DIR/"
+    if [ -d "$temp_dir/ambervpn/dnstt" ]; then
+        cp -r "$temp_dir/ambervpn/dnstt" "$DB_DIR/"
     fi
-    if [ -f "$temp_dir/firewallfalcon/dns_info.conf" ]; then
-        cp "$temp_dir/firewallfalcon/dns_info.conf" "$DB_DIR/"
+    if [ -f "$temp_dir/ambervpn/dns_info.conf" ]; then
+        cp "$temp_dir/ambervpn/dns_info.conf" "$DB_DIR/"
     fi
-    if [ -f "$temp_dir/firewallfalcon/dnstt_info.conf" ]; then
-        cp "$temp_dir/firewallfalcon/dnstt_info.conf" "$DB_DIR/"
+    if [ -f "$temp_dir/ambervpn/dnstt_info.conf" ]; then
+        cp "$temp_dir/ambervpn/dnstt_info.conf" "$DB_DIR/"
     fi
-    if [ -f "$temp_dir/firewallfalcon/falconproxy_config.conf" ]; then
-        cp "$temp_dir/firewallfalcon/falconproxy_config.conf" "$DB_DIR/"
+    if [ -f "$temp_dir/ambervpn/amberproxy_config.conf" ]; then
+        cp "$temp_dir/ambervpn/amberproxy_config.conf" "$DB_DIR/"
     fi
     
     echo -e "${C_BLUE}⚙️ Re-synchronizing system accounts with the restored database...${C_RESET}"
@@ -1169,10 +1169,10 @@ install_udp_custom() {
     arch=$(uname -m)
     local binary_url=""
     if [[ "$arch" == "x86_64" ]]; then
-        binary_url="https://github.com/firewallfalcons/FirewallFalcon-Manager/raw/main/udp/udp-custom-linux-amd64"
+        binary_url="https://github.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/udp/udp-custom-linux-amd64"
         echo -e "${C_BLUE}ℹ️ Detected x86_64 (amd64) architecture.${C_RESET}"
     elif [[ "$arch" == "aarch64" || "$arch" == "arm64" ]]; then
-        binary_url="https://github.com/firewallfalcons/FirewallFalcon-Manager/raw/main/udp/udp-custom-linux-arm"
+        binary_url="https://github.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/udp/udp-custom-linux-arm"
         echo -e "${C_BLUE}ℹ️ Detected ARM64 architecture.${C_RESET}"
     else
         echo -e "\n${C_RED}❌ Unsupported architecture: $arch. Cannot install udp-custom.${C_RESET}"
@@ -1205,7 +1205,7 @@ EOF
     echo -e "\n${C_GREEN}📝 Creating systemd service file...${C_RESET}"
     cat > "$UDP_CUSTOM_SERVICE_FILE" <<EOF
 [Unit]
-Description=UDP Custom by FirewallFalcon
+Description=UDP Custom by AMBERVPN
 After=network.target
 
 [Service]
@@ -1259,7 +1259,7 @@ install_badvpn() {
         echo -e "\n${C_YELLOW}ℹ️ badvpn is already installed.${C_RESET}"
         return
     fi
-    check_and_open_firewall_port 7300 udp || return
+    check_and_open_ambervpn_port 7300 udp || return
     echo -e "\n${C_GREEN}🔄 Updating package lists...${C_RESET}"
     apt-get update
     echo -e "\n${C_GREEN}📦 Installing all required packages...${C_RESET}"
@@ -1353,7 +1353,7 @@ install_ssl_tunnel() {
         echo -e "\n${C_GREEN}🔐 Generating self-signed SSL certificate...${C_RESET}"
         openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
             -keyout "$SSL_CERT_FILE" -out "$SSL_CERT_FILE" \
-            -subj "/CN=@FIREWALLFALCON" \
+            -subj "/CN=@AMBERVPN" \
             >/dev/null 2>&1 || { echo -e "${C_RED}❌ Failed to generate SSL certificate.${C_RESET}"; return; }
         echo -e "${C_GREEN}✅ Certificate created: ${C_YELLOW}$SSL_CERT_FILE${C_RESET}"
     fi
@@ -1724,12 +1724,12 @@ uninstall_dnstt() {
 
 install_falcon_proxy() {
     clear; show_banner
-    echo -e "${C_BOLD}${C_PURPLE}--- 🦅 Installing Falcon Proxy (Websockets/Socks) ---${C_RESET}"
+    echo -e "${C_BOLD}${C_PURPLE}--- 🦅 Installing AMBERVPN Proxy (Websockets/Socks) ---${C_RESET}"
     
     if [ -f "$FALCONPROXY_SERVICE_FILE" ]; then
-        echo -e "\n${C_YELLOW}ℹ️ Falcon Proxy is already installed.${C_RESET}"
-        if [ -f "$FALCONPROXY_CONFIG_FILE" ]; then
-            source "$FALCONPROXY_CONFIG_FILE"
+        echo -e "\n${C_YELLOW}ℹ️ AMBER Proxy is already installed.${C_RESET}"
+        if [ -f "$AMBERVPN_CONFIG_FILE" ]; then
+            source "$AMBERVPN_CONFIG_FILE"
             echo -e "   It is configured to run on port(s): ${C_YELLOW}$PORTS${C_RESET}"
             echo -e "   Installed Version: ${C_YELLOW}${INSTALLED_VERSION:-Unknown}${C_RESET}"
         fi
@@ -1738,7 +1738,7 @@ install_falcon_proxy() {
     fi
 
     echo -e "\n${C_BLUE}🌐 Fetching available versions from GitHub...${C_RESET}"
-    local releases_json=$(curl -s "https://api.github.com/repos/firewallfalcons/FirewallFalcon-Manager/releases")
+    local releases_json=$(curl -s "https://api.github.com/repos/noelrubio143/ngixwsdnsttssl/refs/heads/main/ngixwsdnsttssl")
     if [[ -z "$releases_json" || "$releases_json" == "[]" ]]; then
         echo -e "${C_RED}❌ Error: Could not fetch releases. Check internet or API limits.${C_RESET}"
         return
@@ -1772,7 +1772,7 @@ install_falcon_proxy() {
     done
 
     local ports
-    read -p "👉 Enter port(s) for Falcon Proxy (e.g., 8080 or 8080 8888) [8080]: " ports
+    read -p "👉 Enter port(s) for Amber Proxy (e.g., 8080 or 8080 8888) [8080]: " ports
     ports=${ports:-8080}
 
     local port_array=($ports)
@@ -1782,44 +1782,44 @@ install_falcon_proxy() {
             return
         fi
         check_and_free_ports "$port" || return
-        check_and_open_firewall_port "$port" tcp || return
+        check_and_open_ambervpn_port "$port" tcp || return
     done
 
     echo -e "\n${C_GREEN}⚙️ Detecting system architecture...${C_RESET}"
     local arch=$(uname -m)
     local binary_name=""
     if [[ "$arch" == "x86_64" ]]; then
-        binary_name="falconproxy"
+        binary_name="ambervpn"
         echo -e "${C_BLUE}ℹ️ Detected x86_64 (amd64) architecture.${C_RESET}"
     elif [[ "$arch" == "aarch64" || "$arch" == "arm64" ]]; then
         binary_name="falconproxyarm"
         echo -e "${C_BLUE}ℹ️ Detected ARM64 architecture.${C_RESET}"
     else
-        echo -e "\n${C_RED}❌ Unsupported architecture: $arch. Cannot install Falcon Proxy.${C_RESET}"
+        echo -e "\n${C_RED}❌ Unsupported architecture: $arch. Cannot install amber Proxy.${C_RESET}"
         return
     fi
     
     # Construct download URL based on selected version
-    local download_url="https://github.com/firewallfalcons/FirewallFalcon-Manager/releases/download/$SELECTED_VERSION/$binary_name"
+    local download_url="https://github.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/ngixwsdnsttssl/download/$SELECTED_VERSION/$binary_name"
 
-    echo -e "\n${C_GREEN}📥 Downloading Falcon Proxy $SELECTED_VERSION ($binary_name)...${C_RESET}"
-    wget -q --show-progress -O "$FALCONPROXY_BINARY" "$download_url"
+    echo -e "\n${C_GREEN}📥 Downloading AMBER VPN $SELECTED_VERSION ($binary_name)...${C_RESET}"
+    wget -q --show-progress -O "$AMBERVPN_BINARY" "$download_url"
     if [ $? -ne 0 ]; then
         echo -e "\n${C_RED}❌ Failed to download the binary. Please ensure version $SELECTED_VERSION has asset '$binary_name'.${C_RESET}"
         return
     fi
-    chmod +x "$FALCONPROXY_BINARY"
+    chmod +x "$AMBERVPN_BINARY"
 
     echo -e "\n${C_GREEN}📝 Creating systemd service file...${C_RESET}"
-    cat > "$FALCONPROXY_SERVICE_FILE" <<EOF
+    cat > "$AMBERVPNPROXY_SERVICE_FILE" <<EOF
 [Unit]
-Description=Falcon Proxy ($SELECTED_VERSION)
+Description=Amber Proxy ($SELECTED_VERSION)
 After=network.target
 
 [Service]
 User=root
 Type=simple
-ExecStart=$FALCONPROXY_BINARY -p $ports
+ExecStart=$AMBERPROXY_BINARY -p $ports
 Restart=always
 RestartSec=2s
 
@@ -1828,42 +1828,42 @@ WantedBy=default.target
 EOF
 
     echo -e "\n${C_GREEN}💾 Saving configuration...${C_RESET}"
-    cat > "$FALCONPROXY_CONFIG_FILE" <<EOF
+    cat > "$AMBERVPN_CONFIG_FILE" <<EOF
 PORTS="$ports"
 INSTALLED_VERSION="$SELECTED_VERSION"
 EOF
 
-    echo -e "\n${C_GREEN}▶️ Enabling and starting Falcon Proxy service...${C_RESET}"
+    echo -e "\n${C_GREEN}▶️ Enabling and starting Amber Proxy service...${C_RESET}"
     systemctl daemon-reload
     systemctl enable falconproxy.service
     systemctl restart falconproxy.service
     sleep 2
     
-    if systemctl is-active --quiet falconproxy; then
-        echo -e "\n${C_GREEN}✅ SUCCESS: Falcon Proxy $SELECTED_VERSION is installed and active.${C_RESET}"
+    if systemctl is-active --quiet amberproxy; then
+        echo -e "\n${C_GREEN}✅ SUCCESS: Amber Proxy $SELECTED_VERSION is installed and active.${C_RESET}"
         echo -e "   Listening on port(s): ${C_YELLOW}$ports${C_RESET}"
     else
-        echo -e "\n${C_RED}❌ ERROR: Falcon Proxy service failed to start.${C_RESET}"
+        echo -e "\n${C_RED}❌ ERROR: Amber Proxy service failed to start.${C_RESET}"
         echo -e "${C_YELLOW}ℹ️ Displaying last 15 lines of the service log for diagnostics:${C_RESET}"
         journalctl -u falconproxy.service -n 15 --no-pager
     fi
 }
 
-uninstall_falcon_proxy() {
-    echo -e "\n${C_BOLD}${C_PURPLE}--- 🗑️ Uninstalling Falcon Proxy ---${C_RESET}"
+uninstall_amber_proxy() {
+    echo -e "\n${C_BOLD}${C_PURPLE}--- 🗑️ Uninstalling Amber Proxy ---${C_RESET}"
     if [ ! -f "$FALCONPROXY_SERVICE_FILE" ]; then
         echo -e "${C_YELLOW}ℹ️ Falcon Proxy is not installed, skipping.${C_RESET}"
         return
     fi
-    echo -e "${C_GREEN}🛑 Stopping and disabling Falcon Proxy service...${C_RESET}"
-    systemctl stop falconproxy.service >/dev/null 2>&1
-    systemctl disable falconproxy.service >/dev/null 2>&1
+    echo -e "${C_GREEN}🛑 Stopping and disabling Amber Proxy service...${C_RESET}"
+    systemctl stop amberproxy.service >/dev/null 2>&1
+    systemctl disable amberproxy.service >/dev/null 2>&1
     echo -e "${C_GREEN}🗑️ Removing service file...${C_RESET}"
-    rm -f "$FALCONPROXY_SERVICE_FILE"
+    rm -f "$AMBERVPNPROXY_SERVICE_FILE"
     systemctl daemon-reload
     echo -e "${C_GREEN}🗑️ Removing binary and config files...${C_RESET}"
-    rm -f "$FALCONPROXY_BINARY"
-    rm -f "$FALCONPROXY_CONFIG_FILE"
+    rm -f "$AMBERVPNPROXY_BINARY"
+    rm -f "$AMBERVPNPROXY_CONFIG_FILE"
     echo -e "${C_GREEN}✅ Falcon Proxy has been uninstalled successfully.${C_RESET}"
 }
 
@@ -2114,7 +2114,7 @@ install_nginx_proxy() {
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
         -keyout "$SSL_KEY" \
         -out "$SSL_CERT" \
-        -subj "/CN=firewallfalcon.proxy" >/dev/null 2>&1 || { echo -e "${C_RED}❌ Failed to generate SSL certificate.${C_RESET}"; return; }
+        -subj "/CN=ambervpn.proxy" >/dev/null 2>&1 || { echo -e "${C_RED}❌ Failed to generate SSL certificate.${C_RESET}"; return; }
     echo -e "\n${C_GREEN}📝 Applying Nginx reverse proxy configuration...${C_RESET}"
     mv "$NGINX_CONFIG_FILE" "${NGINX_CONFIG_FILE}.bak" 2>/dev/null
     
@@ -2447,7 +2447,7 @@ show_banner() {
     
     clear
     echo
-    echo -e "${C_TITLE}   FirewallFalcon Manager ${C_RESET}${C_DIM}| v4.0.0 Premium Edition${C_RESET}"
+    echo -e "${C_TITLE}   AMBERVPN Manager ${C_RESET}${C_DIM}| v4.0.0 Premium Edition${C_RESET}"
     echo -e "${C_BLUE}   ─────────────────────────────────────────────────────────${C_RESET}"
     printf "   ${C_GRAY}%-10s${C_RESET} %-20s ${C_GRAY}|${C_RESET} %s\n" "OS" "$os_name" "Uptime: $up_time"
     printf "   ${C_GRAY}%-10s${C_RESET} %-20s ${C_GRAY}|${C_RESET} %s\n" "Memory" "${ram_usage}% Used" "Online Sessions: ${C_WHITE}${online_users}${C_RESET}"
@@ -2475,12 +2475,12 @@ protocol_menu() {
         
         local dnstt_status; if systemctl is-active --quiet dnstt.service; then dnstt_status="${C_STATUS_A}(Active)${C_RESET}"; else dnstt_status="${C_STATUS_I}(Inactive)${C_RESET}"; fi
         
-        local falconproxy_status="${C_STATUS_I}(Inactive)${C_RESET}"
-        local falconproxy_ports=""
-        if systemctl is-active --quiet falconproxy; then
-            if [ -f "$FALCONPROXY_CONFIG_FILE" ]; then source "$FALCONPROXY_CONFIG_FILE"; fi
-            falconproxy_ports=" ($PORTS)"
-            falconproxy_status="${C_STATUS_A}(Active - ${INSTALLED_VERSION:-latest})${C_RESET}"
+        local ambervpn_status="${C_STATUS_I}(Inactive)${C_RESET}"
+        local ambervpn_ports=""
+        if systemctl is-active --quiet ambervpn; then
+            if [ -f "$AMBERVPN_CONFIG_FILE" ]; then source "$AMBERVPN_CONFIG_FILE"; fi
+            ambervpn_ports=" ($PORTS)"
+            ambervpn_status="${C_STATUS_A}(Active - ${INSTALLED_VERSION:-latest})${C_RESET}"
         fi
 
         local nginx_status; if systemctl is-active --quiet nginx; then nginx_status="${C_STATUS_A}(Active)${C_RESET}"; else nginx_status="${C_STATUS_I}(Inactive)${C_RESET}"; fi
@@ -2634,7 +2634,7 @@ uninstall_script() {
     echo -e " - The main command ($(command -v menu))"
     echo -e " - All configuration and user data ($DB_DIR)"
     echo -e " - The active limiter service ($LIMITER_SERVICE)"
-    echo -e " - All installed services (badvpn, udp-custom, SSL Tunnel, Nginx, DNSTT, FalconProxy)"
+    echo -e " - All installed services (badvpn, udp-custom, SSL Tunnel, Nginx, DNSTT, AMBERProxy)"
     echo -e "\n${C_RED}This action is irreversible.${C_RESET}"
     echo ""
     read -p "👉 Type 'yes' to confirm and proceed with uninstallation: " confirm
@@ -2646,8 +2646,8 @@ uninstall_script() {
     echo -e "\n${C_BLUE}--- 💥 Starting Uninstallation 💥 ---${C_RESET}"
     
     echo -e "\n${C_BLUE}🗑️ Removing active limiter service...${C_RESET}"
-    systemctl stop firewallfalcon-limiter &>/dev/null
-    systemctl disable firewallfalcon-limiter &>/dev/null
+    systemctl stop ambervpn-limiter &>/dev/null
+    systemctl disable ambervpn-limiter &>/dev/null
     rm -f "$LIMITER_SERVICE"
     rm -f "$LIMITER_SCRIPT"
     
