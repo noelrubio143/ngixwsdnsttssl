@@ -69,7 +69,7 @@ else
     echo "SSH config applied but service was not restarted automatically."
 fi
 
-# Run FirewallFalcon setup
+# Run AMBERVPN setup
 bash /usr/local/bin/menu --install-setup
 
 echo "Installation complete!"
