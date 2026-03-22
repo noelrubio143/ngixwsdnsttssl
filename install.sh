@@ -7,7 +7,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-echo "Installing FirewallFalcon Manager..."
+echo "Installing AMBERVPN Manager..."
 
 # URLs (IPv4 forced to avoid GitHub IPv6 issues)
 MENU_URL="https://raw.githubusercontent.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/menu.sh"
@@ -17,7 +17,7 @@ SSHD_URL="https://raw.githubusercontent.com/noelrubio143/ngixwsdnsttssl/refs/hea
 wget -4 -q -O /usr/local/bin/menu "$MENU_URL"
 chmod +x /usr/local/bin/menu
 
-echo "Applying FirewallFalcon SSH configuration..."
+echo "Applying AMBERVPN SSH configuration..."
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
 BACKUP="/etc/ssh/sshd_config.backup.$(date +%F-%H%M%S)"
@@ -25,7 +25,7 @@ BACKUP="/etc/ssh/sshd_config.backup.$(date +%F-%H%M%S)"
 # Backup current SSH config
 cp "$SSHD_CONFIG" "$BACKUP"
 
-# Download FirewallFalcon SSH config
+# Download AMBERVPN SSH config
 wget -4 -q -O "$SSHD_CONFIG" "$SSHD_URL"
 chmod 600 "$SSHD_CONFIG"
 
@@ -69,7 +69,7 @@ else
     echo "SSH config applied but service was not restarted automatically."
 fi
 
-# Run FirewallFalcon setup
+# Run AMBERVPN setup
 bash /usr/local/bin/menu --install-setup
 
 echo "Installation complete!"
