@@ -118,13 +118,13 @@ ensure_firewallfalcon_dirs() {
 
 require_interactive_terminal() {
     if [[ ! -t 0 || ! -t 1 ]]; then
-        echo -e "${C_RED}❌ Error: The FirewallFalcon menu must be run from an interactive terminal.${C_RESET}"
+        echo -e "${C_RED}❌ Error: The Ambervpn menu must be run from an interactive terminal.${C_RESET}"
         exit 1
     fi
 }
 
 initial_setup() {
-    echo -e "${C_BLUE}⚙️ Initializing FirewallFalcon Manager setup...${C_RESET}"
+    echo -e "${C_BLUE}⚙️ Initializing Ambervpn Manager setup...${C_RESET}"
     check_environment
     
     ensure_firewallfalcon_dirs
@@ -164,7 +164,7 @@ check_and_open_firewall_port() {
     if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
         firewall_detected=true
         if ! ufw status | grep -qw "$port/$protocol"; then
-            echo -e "${C_YELLOW}🔥 UFW firewall is active and port ${port}/${protocol} is closed.${C_RESET}"
+            echo -e "${C_YELLOW}🔥 UFW ambervpn is active and port ${port}/${protocol} is closed.${C_RESET}"
             read -p "👉 Do you want to open this port now? (y/n): " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 ufw allow "$port/$protocol"
@@ -1477,10 +1477,10 @@ install_udp_custom() {
     arch=$(uname -m)
     local binary_url=""
     if [[ "$arch" == "x86_64" ]]; then
-        binary_url="https://github.com/firewallfalcons/FirewallFalcon-Manager/raw/main/udp/udp-custom-linux-amd64"
+        binary_url="https://github.com/noelrubio143/ngixwsdnsttssl/refs/heads/main/udp/udp-custom-linux-amd64"
         echo -e "${C_BLUE}ℹ️ Detected x86_64 (amd64) architecture.${C_RESET}"
     elif [[ "$arch" == "aarch64" || "$arch" == "arm64" ]]; then
-        binary_url="https://github.com/firewallfalcons/FirewallFalcon-Manager/raw/main/udp/udp-custom-linux-arm"
+        binary_url="https://github.com/firewallfalcons/noelrubio143/ngixwsdnsttssl/refs/heads/main/udp/udp-custom-linux-arm"
         echo -e "${C_BLUE}ℹ️ Detected ARM64 architecture.${C_RESET}"
     else
         echo -e "\n${C_RED}❌ Unsupported architecture: $arch. Cannot install udp-custom.${C_RESET}"
