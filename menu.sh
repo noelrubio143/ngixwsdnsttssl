@@ -52,9 +52,9 @@ DNS_INFO_FILE="$DB_DIR/dns_info.conf"
 UDP_CUSTOM_DIR="/root/udp"
 UDP_CUSTOM_SERVICE_FILE="/etc/systemd/system/udp-custom.service"
 SSH_BANNER_FILE="/etc/bannerssh"
-FALCONPROXY_SERVICE_FILE="/etc/systemd/system/falconproxy.service"
-FALCONPROXY_BINARY="/usr/local/bin/falconproxy"
-FALCONPROXY_CONFIG_FILE="$DB_DIR/falconproxy_config.conf"
+FALCONPROXY_SERVICE_FILE="/etc/systemd/system/ambervpn.service"
+FALCONPROXY_BINARY="/usr/local/bin/ambervpn"
+FALCONPROXY_CONFIG_FILE="$DB_DIR/ambervpn_config.conf"
 LIMITER_SCRIPT="/usr/local/bin/ambervpn-limiter.sh"
 LIMITER_SERVICE="/etc/systemd/system/ambervpn-limiter.service"
 BANDWIDTH_DIR="$DB_DIR/bandwidth"
@@ -111,8 +111,8 @@ check_environment() {
     done
 }
 
-ensure_firewallfalcon_dirs() {
-    mkdir -p "$DB_DIR" "$SSL_CERT_DIR" "$BANDWIDTH_DIR" "/etc/firewallfalcon/banners" /etc/ssh/sshd_config.d
+ensure_ambervpn_dirs() {
+    mkdir -p "$DB_DIR" "$SSL_CERT_DIR" "$BANDWIDTH_DIR" "/etc/ambervpn/banners" /etc/ssh/sshd_config.d
     touch "$DB_FILE"
 }
 
@@ -250,11 +250,11 @@ setup_limiter_service() {
     # Combined limiter + bandwidth monitoring
     cat > "$LIMITER_SCRIPT" << 'EOF'
 #!/bin/bash
-# FirewallFalcon limiter version 2026-03-20.1
-DB_FILE="/etc/firewallfalcon/users.db"
-BW_DIR="/etc/firewallfalcon/bandwidth"
+# Ambetvpn limiter version 2026-03-20.1
+DB_FILE="/etc/ambervpn/users.db"
+BW_DIR="/etc/ambervpn/bandwidth"
 PID_DIR="$BW_DIR/pidtrack"
-BANNER_DIR="/etc/firewallfalcon/banners"
+BANNER_DIR="/etc/ambervpn/banners"
 SCAN_INTERVAL=30
 
 mkdir -p "$BW_DIR" "$PID_DIR"
@@ -319,7 +319,7 @@ while true; do
         [[ "$passwd_status" == "L" ]] && locked_users["$passwd_user"]=1
     done < <(passwd -Sa 2>/dev/null)
 
-    if [[ -f "/etc/firewallfalcon/banners_enabled" ]]; then
+    if [[ -f "/etc/ambervpn/banners_enabled" ]]; then
         mkdir -p "$BANNER_DIR"
         banners_enabled=true
     fi
@@ -472,7 +472,7 @@ EOF
 
     cat > "$LIMITER_SERVICE" << EOF
 [Unit]
-Description=FirewallFalcon Active User Limiter
+Description=Ambetvpn Active User Limiter
 After=network.target
 
 [Service]
@@ -489,12 +489,12 @@ WantedBy=multi-user.target
 EOF
     sed -i 's/\r$//' "$LIMITER_SERVICE" 2>/dev/null
 
-    pkill -f "firewallfalcon-limiter" 2>/dev/null
+    pkill -f "ambervpn-limiter" 2>/dev/null
 
-    if ! systemctl is-active --quiet firewallfalcon-limiter; then
+    if ! systemctl is-active --quiet ambervpn-limiter; then
         systemctl daemon-reload
-        systemctl enable firewallfalcon-limiter &>/dev/null
-        systemctl start firewallfalcon-limiter --no-block &>/dev/null
+        systemctl enable ambervpn-limiter &>/dev/null
+        systemctl start ambervpn-limiter --no-block &>/dev/null
         
     else
         systemctl restart firewallfalcon-limiter --no-block &>/dev/null
@@ -503,7 +503,7 @@ EOF
 }
 
 sync_runtime_components_if_needed() {
-    local limiter_marker="# FirewallFalcon limiter version 2026-03-20.1"
+    local limiter_marker="# Ambervpn limiter version 2026-03-20.1"
     if [[ ! -f "$LIMITER_SCRIPT" ]] || ! grep -Fqx "$limiter_marker" "$LIMITER_SCRIPT" 2>/dev/null; then
         setup_limiter_service >/dev/null 2>&1
     fi
@@ -513,9 +513,9 @@ setup_bandwidth_service() {
     mkdir -p "$BANDWIDTH_DIR"
     # Bandwidth monitoring is now integrated into the limiter service above.
     # Stop the old standalone bandwidth service if it exists.
-    if systemctl is-active --quiet firewallfalcon-bandwidth 2>/dev/null; then
-        systemctl stop firewallfalcon-bandwidth &>/dev/null
-        systemctl disable firewallfalcon-bandwidth &>/dev/null
+    if systemctl is-active --quiet ambervpn-bandwidth 2>/dev/null; then
+        systemctl stop ambervpn-bandwidth &>/dev/null
+        systemctl disable ambervpn-bandwidth &>/dev/null
     fi
     rm -f "$BANDWIDTH_SERVICE" "$BANDWIDTH_SCRIPT" 2>/dev/null
 }
@@ -523,10 +523,10 @@ setup_bandwidth_service() {
 setup_trial_cleanup_script() {
     cat > "$TRIAL_CLEANUP_SCRIPT" << 'TREOF'
 #!/bin/bash
-# FirewallFalcon Trial Account Auto-Cleanup
-# Usage: firewallfalcon-trial-cleanup.sh <username>
-DB_FILE="/etc/firewallfalcon/users.db"
-BW_DIR="/etc/firewallfalcon/bandwidth"
+# Ambervpn Trial Account Auto-Cleanup
+# Usage: ambervpn-trial-cleanup.sh <username>
+DB_FILE="/etc/ambervpn/users.db"
+BW_DIR="/etc/ambervpn/bandwidth"
 
 username="$1"
 if [[ -z "$username" ]]; then exit 1; fi
@@ -550,9 +550,9 @@ TREOF
 
 update_ssh_banners_config() {
     local tmp_conf
-    rm -f /usr/local/bin/firewallfalcon-login-info.sh 2>/dev/null
+    rm -f /usr/local/bin/ambervpn-login-info.sh 2>/dev/null
     
-    if [[ ! -f "/etc/firewallfalcon/banners_enabled" ]]; then
+    if [[ ! -f "/etc/ambervpn/banners_enabled" ]]; then
         if [[ -f "$SSHD_FF_CONFIG" ]]; then
             rm -f "$SSHD_FF_CONFIG" 2>/dev/null
             systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null
@@ -560,10 +560,10 @@ update_ssh_banners_config() {
         return
     fi
     
-    ensure_firewallfalcon_dirs
+    ensure_ambervpn_dirs
     
     tmp_conf="/tmp/ff_banners_new.conf"
-    echo "# FirewallFalcon - Show login info native banners" > "$tmp_conf"
+    echo "# Ambervpn - Show login info native banners" > "$tmp_conf"
     
     if [[ -f "$DB_FILE" ]]; then
         while IFS=: read -r u _rest; do
@@ -585,9 +585,9 @@ update_ssh_banners_config() {
 }
 
 setup_ssh_login_info() {
-    ensure_firewallfalcon_dirs || return 1
-    if ! touch "/etc/firewallfalcon/banners_enabled"; then
-        echo -e "${C_RED}❌ Failed to enable SSH banners. Could not create /etc/firewallfalcon/banners_enabled.${C_RESET}"
+    ensure_ambervpn_dirs || return 1
+    if ! touch "/etc/ambervpn/banners_enabled"; then
+        echo -e "${C_RED}❌ Failed to enable SSH banners. Could not create /etc/ambervpn/banners_enabled.${C_RESET}"
         return 1
     fi
     invalidate_banner_cache
@@ -1269,8 +1269,8 @@ cleanup_expired() {
 backup_user_data() {
     clear; show_banner
     echo -e "${C_BOLD}${C_PURPLE}--- 💾 Backup User Data ---${C_RESET}"
-    read -p "👉 Enter path for backup file [/root/firewallfalcon_users.tar.gz]: " backup_path
-    backup_path=${backup_path:-/root/firewallfalcon_users.tar.gz}
+    read -p "👉 Enter path for backup file [/root/ambervpn_users.tar.gz]: " backup_path
+    backup_path=${backup_path:-/root/ambervpn_users.tar.gz}
     if [ ! -d "$DB_DIR" ] || [ ! -s "$DB_FILE" ]; then
         echo -e "\n${C_YELLOW}ℹ️ No user data found to back up.${C_RESET}"
         return
@@ -1287,8 +1287,8 @@ backup_user_data() {
 restore_user_data() {
     clear; show_banner
     echo -e "${C_BOLD}${C_PURPLE}--- 📥 Restore User Data ---${C_RESET}"
-    read -p "👉 Enter the full path to the user data backup file [/root/firewallfalcon_users.tar.gz]: " backup_path
-    backup_path=${backup_path:-/root/firewallfalcon_users.tar.gz}
+    read -p "👉 Enter the full path to the user data backup file [/root/ambervpn_users.tar.gz]: " backup_path
+    backup_path=${backup_path:-/root/ambervpn_users.tar.gz}
     if [ ! -f "$backup_path" ]; then
         echo -e "\n${C_RED}❌ ERROR: Backup file not found at '$backup_path'.${C_RESET}"
         return
@@ -1306,7 +1306,7 @@ restore_user_data() {
         rm -rf "$temp_dir"
         return
     fi
-    local restored_db_file="$temp_dir/firewallfalcon/users.db"
+    local restored_db_file="$temp_dir/ambervpn/users.db"
     if [ ! -f "$restored_db_file" ]; then
         echo -e "\n${C_RED}❌ ERROR: users.db not found in the backup. Cannot restore user accounts.${C_RESET}"
         rm -rf "$temp_dir"
@@ -1315,20 +1315,20 @@ restore_user_data() {
     echo -e "${C_BLUE}⚙️ Overwriting current user database...${C_RESET}"
     mkdir -p "$DB_DIR"
     cp "$restored_db_file" "$DB_FILE"
-    if [ -d "$temp_dir/firewallfalcon/ssl" ]; then
-        cp -r "$temp_dir/firewallfalcon/ssl" "$DB_DIR/"
+    if [ -d "$temp_dir/ambervpn/ssl" ]; then
+        cp -r "$temp_dir/ambervpn/ssl" "$DB_DIR/"
     fi
-    if [ -d "$temp_dir/firewallfalcon/dnstt" ]; then
-        cp -r "$temp_dir/firewallfalcon/dnstt" "$DB_DIR/"
+    if [ -d "$temp_dir/ambervpn/dnstt" ]; then
+        cp -r "$temp_dir/ambervpn/dnstt" "$DB_DIR/"
     fi
-    if [ -f "$temp_dir/firewallfalcon/dns_info.conf" ]; then
-        cp "$temp_dir/firewallfalcon/dns_info.conf" "$DB_DIR/"
+    if [ -f "$temp_dir/ambervpn/dns_info.conf" ]; then
+        cp "$temp_dir/ambervpn/dns_info.conf" "$DB_DIR/"
     fi
-    if [ -f "$temp_dir/firewallfalcon/dnstt_info.conf" ]; then
-        cp "$temp_dir/firewallfalcon/dnstt_info.conf" "$DB_DIR/"
+    if [ -f "$temp_dir/ambervpb/dnstt_info.conf" ]; then
+        cp "$temp_dir/ambervpn/dnstt_info.conf" "$DB_DIR/"
     fi
-    if [ -f "$temp_dir/firewallfalcon/falconproxy_config.conf" ]; then
-        cp "$temp_dir/firewallfalcon/falconproxy_config.conf" "$DB_DIR/"
+    if [ -f "$temp_dir/ambervpn/amberproxy_config.conf" ]; then
+        cp "$temp_dir/ambervpn/amberproxy_config.conf" "$DB_DIR/"
     fi
     
     echo -e "${C_BLUE}⚙️ Re-synchronizing system accounts with the restored database...${C_RESET}"
